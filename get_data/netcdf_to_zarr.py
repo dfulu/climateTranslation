@@ -86,6 +86,8 @@ def netcdf_files_to_zarr(files, filepath):
     # open all the datasets
     ds = open_datasets(run_numbers, grouped_files)
     
+    ds = ds[[v for v in ds.data_vars if not 'bnds' in v]]
+
     save_to_zarr(ds, filepath)
 
 ################################################################################
