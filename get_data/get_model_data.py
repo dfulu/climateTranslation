@@ -14,7 +14,7 @@ import os
 dirname = os.path.dirname(__file__)
 
 models = ['CAM5', 'MIROC5','HadGEM3']
-variables = ['tas', 'tasmax', 'tasmin']
+variables = ['tas', 'tasmax', 'tasmin', 'pr', 'all']
 experiments = ['all_hist', 'nat_hist']
 
 def check_model(model):
@@ -61,7 +61,7 @@ args = parser.parse_args()
 runstrings = {
     'CAM5':'run{:03d}',
     'MIROC5':'run{:03d}',
-    'HadGEM3':'r1i1p{}', # stochastic phyics I think
+    'HadGEM3':'r1i1p{}', # stochastic physics I think
 }
 
 runforms = {
@@ -82,7 +82,10 @@ if args.outputfile=='':
     args.outputfile = "{}_{}_{}_{}.sh".format(args.model, args.experiment, args.variable, prefix)
 
 def filter(s):
-    return (not bool(rexp1.search(s))) or (bool(rexp2.search(s)) and bool(rexp3.search(s)))
+    if args.variable is not 'all':
+        return (not bool(rexp1.search(s))) or (bool(rexp2.search(s)) and bool(rexp3.search(s)))
+    else:
+        return (not bool(rexp1.search(s))) or bool(rexp2.search(s))
 
 def dedup_print(L):
     nL=[L[0]]
