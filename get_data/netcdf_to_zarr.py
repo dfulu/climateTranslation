@@ -6,6 +6,7 @@ import os
 import xarray as xr
 import numpy as np
 import re
+import gc
 
 ################################################################################
 # function library
@@ -24,6 +25,7 @@ def search_model_name(s):
         raise valueError(f"Filename matches multiple models. Found {models_found}")
     return models_found[0]
 
+
 def find_run_number(s, model):
     """Examine the filepath to infer the run number"""
     if model in ['cam5', 'miroc5']:
@@ -34,6 +36,7 @@ def find_run_number(s, model):
         raise ValueError(f"Model '{model}' not found")
     return run_num
 
+
 def split_by_run(files, model):
     """Group the files based on run number"""
     runs = [find_run_number(f, model) for f in files]
@@ -41,39 +44,66 @@ def split_by_run(files, model):
     grouped_files = [[f for r,f in zip(runs, files) if r==run] for run in unique_runs]
     return unique_runs, grouped_files
 
+
 def open_datasets(run_numbers, grouped_files):
     """Open each model run and concatenate along a new 'run' axis"""
     ds_list = []
-    for run_num, files in zip(run_numbers, grouped_files):
-        ds_list.append(
-            xr.open_mfdataset(files)\
-                .expand_dims({'run':[run_num]})\
-                .sortby('time')
-        )
-    ds = xr.concat(ds_list, dim='run').sortby('run')
+    print(f"    open_datasets()", flush=True)
+    print(f"    opening:", flush=True)
+    
+    for i, (run_num, files) in enumerate(zip(run_numbers, grouped_files)):
+        print(8*" "+f"run{run_num} : {len(files)} files", flush=True)
+        
+        da_list = []
+        variables = np.unique([f.split('/')[1].split('_')[0] for f in files])
+        
+        for v in variables:
+            print(12*" "+f"{v}", flush=True)
+            
+            da_list.append(xr.open_mfdataset([f for f in sorted(files) if f"/{v}_" in f], 
+                                             coords='minimal', 
+                                             compat='override',
+                                             concat_dim="time",))
+            
+        print(12*" "+f"merging in", flush=True)
+        ds_ = xr.merge(da_list).expand_dims({'run':[run_num]})
+        if i>0:
+            ds = xr.concat([ds, ds_], dim='run')
+        else:
+            ds = ds_
+        
+    ds = ds.sortby('run')
     return ds
+
 
 def save_to_zarr(ds, filepath):
     """Save the dataset to local zarr store"""
+    print(4*" "+'save_to_zarr()', flush=True)
+    print(8*" "+'chunking', flush=True)
     chunk_dict = {'time': 1, 'run':1}
     ds = ds.chunk(chunk_dict)
     
-    # Potential ToDo - Add encoding
+    # Potential ToDo - Add compression
     # Probably only worth it chunked differently
-    encoding=None
+    encoding={v: {'dtype': 'float32'} for v in ds.data_vars}
     
+    print(8*" "+'saving', flush=True)
     ds.to_zarr(filepath, consolidated=True, encoding=encoding) 
-        
+
+
 def netcdf_files_to_zarr(files, filepath):
     """Take complete list of files and copy them into a new local zarr store"""
+    print('setting up directory', flush=True)
     os.makedirs(filepath, exist_ok=False)
     
     # check all files are netcdf
+    print('checking files format', flush=True)
     non_netcdf = [f for f in files if not f.endswith('.nc')]
     if len(non_netcdf)>0:
         raise ValueError(f"Found non-netcdf files: {non_netcdf}")
 
     # check for model name and make sure not multiple models
+    print('checking if single model', flush=True)
     model = np.unique([search_model_name(f) for f in files])
     if len(model)!=1:
         raise ValueError(f"Input file list must contain exactly one model. Found {model}")
@@ -81,14 +111,19 @@ def netcdf_files_to_zarr(files, filepath):
         model = model[0]
     
     # divide files into runs
+    print('sorting files', flush=True)
     run_numbers, grouped_files = split_by_run(files, model)
     
     # open all the datasets
+    print('opening datasets', flush=True)
     ds = open_datasets(run_numbers, grouped_files)
     
+    print('filtering bounds', flush=True)
     ds = ds[[v for v in ds.data_vars if not 'bnds' in v]]
-
+    
+    print('saving to zarr', flush=True)
     save_to_zarr(ds, filepath)
+
 
 ################################################################################
 # run

@@ -82,10 +82,11 @@ if args.outputfile=='':
     args.outputfile = "{}_{}_{}_{}.sh".format(args.model, args.experiment, args.variable, prefix)
 
 def filter(s):
-    if args.variable is not 'all':
-        return (not bool(rexp1.search(s))) or (bool(rexp2.search(s)) and bool(rexp3.search(s)))
+    if args.variable=='all':
+        return (not bool(rexp1.search(s))) or bool(rexp2.search(s))   
     else:
-        return (not bool(rexp1.search(s))) or bool(rexp2.search(s))
+        return (not bool(rexp1.search(s))) or (bool(rexp2.search(s)) and bool(rexp3.search(s)))
+
 
 def dedup_print(L):
     nL=[L[0]]
