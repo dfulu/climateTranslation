@@ -23,10 +23,10 @@ def crop_to_full_years(ds):
 
 def precip_to_mm(ds):
     """Convert precip to mm"""
-    if ds.pr.sttrs['units']=='kg m-2 s-1':
+    if ds.pr.attrs['units']=='kg m-2 s-1':
         ds['pr'] = ds.pr * 24*60**2
-        ds.pr.sttrs['units']='mm'
-    elif ds.pr.sttrs['units']=='mm':
+        ds.pr.attrs['units']='mm'
+    elif ds.pr.attrs['units']=='mm':
         pass
     else:
         raise ValueError('Unrecognised units')
