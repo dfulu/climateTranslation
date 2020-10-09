@@ -175,11 +175,16 @@ def precip_nnmm_days(ds, nn):
     """22. Rnnmm"""
     return (ds.pr>=nn).mean(dim=('time', 'run')).rename(f'R{nn}mm')
 
+def _roll_compare(x, i, axis):
+    a = x[tuple([slice(None) if ax!=axis else slice(None, x.shape[axis]-i) for ax in range(len(x.shape))])]
+    b = x[tuple([slice(None) if ax!=axis else slice(i, None) for ax in range(len(x.shape))])]
+    return np.any((a-b)==0, axis=axis)
+
 def _max_length_condition(ds_cond, axis=0):
     ds_cum_change = (~ds_cond).cumsum(axis=axis)
     max_sequence_length = np.zeros([ds_cond.shape[i] for i in range(len(ds_cond.shape)) if i!=axis])
     for i in range(1, ds_cond.shape[axis]):
-        sequence = np.any((np.roll(ds_cum_change, -i, axis=axis)-ds_cum_change)==0, axis=axis)
+        sequence = _roll_compare(ds_cum_change, i, axis)
         if sequence.sum()==0:
             break
         max_sequence_length[sequence]=i
