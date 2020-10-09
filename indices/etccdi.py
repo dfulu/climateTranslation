@@ -54,12 +54,12 @@ def _one_year_gsl(tas_year, apex_month=7, temp=5):
 
 def growing_season_length(ds):
     """5. GSL"""
-    ds_north = ds_.tas.sel(lat=slice(0, 90))
-    ds_south = ds_.tas.sel(lat=slice(-90, 0-1e-8))
+    ds_north = ds.tas.sel(lat=slice(0, 90))
+    ds_south = ds.tas.sel(lat=slice(-90, 0-1e-8))
     
     # start and end time of sequence
-    t0 = ds_.time[0].item()
-    tn = ds_.time[-1].item()
+    t0 = ds.time[0].item()
+    tn = ds.time[-1].item()
     
     # calculate start and ends of years we have full coverage for
     if t0.month > 1 or t0.day > 1:
@@ -154,14 +154,11 @@ def monthly_max_1day_precip(ds):
 def monthly_max_5day_precip(ds):
     """18. Rx5day"""
     rolling_precip = ds.pr.rolling(time=5, center=False, keep_attrs=True).reduce(np.sum)
-    max_roll_precip = rolling_precip.resample(time='1M').reduce(np.sum)
+    max_roll_precip = rolling_precip.resample(time='1M').reduce(np.max)
     return max_roll_precip.groupby('time.month').mean(dim=('time', 'run')).rename("Rx5day")
 
 def precip_intensity(ds):
     """19. SDII"""
-    # convert from kg m-2 s-1 to mm
-    pr = ds.pr * 24*60**2
-    pr.attrs['units']='mm/day'
     # filter to where mm>1
     return pr.where(pr>1).mean(dim=('time', 'run')).rename('SDII')
 
@@ -175,9 +172,6 @@ def precip_20mm_days(ds):
 
 def precip_nnmm_days(ds, nn):
     """22. Rnnmm"""
-    # convert from kg m-2 s-1 to mm
-    pr = ds.pr * 24*60**2
-    # count of days where mm>10
     return (pr>=nn).mean(dim=('time', 'run')).rename(f'R{nn}mm')
 
 def _max_length_condition(ds_cond, axis=0):
@@ -192,27 +186,25 @@ def _max_length_condition(ds_cond, axis=0):
 
 def max_length_dry_spell(ds):
     """23. CDD"""
-    pr = ds.pr * 24*60**2
     dry = pr<1
     return dry.resample(time='1Y').reduce(_max_length_condition).mean(dim=('time', 'run')).rename('CDD')
 
 def max_length_wet_spell(ds):
     """24. CWD"""
-    pr = ds.pr * 24*60**2
     wet = pr>1
     return wet.resample(time='1Y').reduce(_max_length_condition).mean(dim=('time', 'run')).rename('CDD')
 
-########################
-# TO DO : 25-26
-# 25-26 percentile
-#######################
+def annual_heavy_precip(ds, pr95):
+    """25. R95pTOT"""
+    pr.where(pr.groupby('time.dayofyear')>pr95).resample('1Y').sum().mean(dim=('time', 'run')).rename('R95pTOT')
 
-def precip_nnmm_days(ds, nn):
+def annual_very_heavy_precip(ds, pr99):
+    """26. R99pTOT"""
+    pr.where(pr.groupby('time.dayofyear')>pr99).resample('1Y').sum().mean(dim=('time', 'run')).rename('R99pTOT')
+    
+def annual_precip(ds):
     """27. PRCPTOT"""
-    # convert from kg m-2 s-1 to mm
-    pr = ds.pr * 24*60**2
-    pr.attrs['units']='mm'
-    return pr.resample(time="1Y").reduce(np.sum).mean(dim=('time', 'run')).rename('PRCPTOT')
+    return pr.where(pr>1).resample(time="1Y").reduce(np.sum).mean(dim=('time', 'run')).rename('PRCPTOT')
 
 ######################
 # apply many
