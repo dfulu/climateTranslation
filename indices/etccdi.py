@@ -29,6 +29,7 @@ def fraction_of_tropical_nights(ds):
 def _one_year_gsl(tas_year, apex_month=7, temp=5):
     
     def growing_days(x, **kwargs):
+        x = np.nan_to_num(x, nan=0)
         return (x>temp+ZEROCELCIUS).sum(**kwargs)
     
     n_growing_days = tas_year.rolling(time=6, center=False, keep_attrs=True).reduce(growing_days)
@@ -160,7 +161,6 @@ def monthly_max_5day_precip(ds):
 
 def precip_intensity(ds):
     """19. SDII"""
-    # filter to where mm>1
     return ds.pr.where(ds.pr>1).mean(dim=('time', 'run')).rename('SDII')
 
 def precip_10mm_days(ds):
