@@ -1,6 +1,6 @@
 import argparse
 from climatetranslation.diagnostics.simple_aggregates import aggregates
-from climatetranslation.unit.utils import get_dataset
+from climatetranslation.unit.data import get_dataset
 
 
 parser = argparse.ArgumentParser()

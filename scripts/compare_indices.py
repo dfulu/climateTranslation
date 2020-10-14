@@ -1,6 +1,6 @@
 import argparse
 from climatetranslation.diagnostics.indices import apply_all_indices, prepare_reference
-from climatetranslation.unit.utils import get_dataset
+from climatetranslation.unit.data import get_dataset
 
 
 parser = argparse.ArgumentParser()
