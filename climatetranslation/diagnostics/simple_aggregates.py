@@ -6,6 +6,10 @@ from dask.diagnostics import ProgressBar
 
 def aggregates(ds, dim):
     """Function to calculate various aggregates to be used in pre-processing data."""
+    
+    # add 4th root of precip
+    ds['pr_4root'] = ds['pr']**(1/4)
+    
     agg = {}
     agg['mean'] = ds.mean(dim=dim)
     agg['std'] = ds.std(dim=dim)
