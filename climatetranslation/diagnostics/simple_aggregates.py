@@ -7,8 +7,9 @@ from dask.diagnostics import ProgressBar
 def aggregates(ds, dim):
     """Function to calculate various aggregates to be used in pre-processing data."""
     
-    # add 4th root of precip
-    ds['pr_4root'] = ds['pr']**(1/4)
+    # Add 4th root of precip
+    # Numerical error in data means sometimes 0 -> O(1e-22). Therefore need to clip.
+    ds['pr_4root'] = ds['pr'].clip(0, None)**(1/4)
     
     agg = {}
     agg['mean'] = ds.mean(dim=dim)
