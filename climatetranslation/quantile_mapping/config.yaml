@@ -1,0 +1,19 @@
+# data options
+number_splits_lat: 50 # split each dataset into this many lat chunks
+number_splits_lon: 100 # split each dataset into this many lat chunks
+data_zarr_a: /datadrive/hadgem3/nat_hist_zarr  # dataset folder location
+data_zarr_b: /datadrive/cam5/nat_hist_zarr     # dataset folder location
+level_vars:                   # which levels to take each variable at 
+  0:
+  - pr
+  2:
+  - tas
+  - tasmin
+  - tasmax
+  
+# quantile options
+number_of_quantiles: 100 # number of quantiles to calculate
+fraction_gap: 0.001 # quantiles chosen will range between this value and 1-this value
+
+# output options
+output_root: /home/dfulu/model_outputs/quantile_mapping_models/v1
