@@ -1,11 +1,12 @@
 import xarray as xr
+import zarr
 from rechunker import rechunk
 
 import argparse
 import time
 import os
 
-from dask.distributed import Client, performance_report, LocalCluster
+from dask.distributed import Client
 from dask.diagnostics import ProgressBar
 
 print(f"staring - {time.asctime()}", flush=True)
@@ -23,9 +24,9 @@ args = parser.parse_args()
 class ob: pass
 args = ob()
 args.latlonchunks = 4
-args.inputzarr = '/datadrive/cam5/nat_hist_zarr'
+args.inputzarr = '/datadrive/hadgem3/nat_hist_zarr'
 args.intermediatezarr = ''
-args.outputzarr = '/datadrive/cam5/nat_hist_zarr_time_stream'
+args.outputzarr = '/datadrive/hadgem3/nat_hist_zarr_time_stream'
 args.max_mem = 40
 args.n_workers = 2
 '''
@@ -40,8 +41,7 @@ max_mem = f"{args.max_mem}GB"
 
 # Set up cluster
 if args.n_workers>1:
-    cluster = LocalCluster(n_workers=args.n_workers, threads_per_worker=1)
-    client = Client(cluster)
+    client = Client(n_workers=args.n_workers, threads_per_worker=1,)# memory_limit=f'{args.max_mem//args.n_workers}GB')
 
 # Load and define new chunks
 ds = xr.open_zarr(args.inputzarr, consolidated=True)
@@ -56,8 +56,13 @@ with ProgressBar():
     array_plan.execute()
     
 if args.n_workers>1:
-    cluster.close()
+    client.close()
+    
 os.system(f"rm -rf {temp_store}")
+
+# This next section manually consolidates the zarr store
+zarr.convenience.consolidate_metadata(args.outputzarr)
+
     
 """
 #https://github.com/pangeo-data/rechunker/blob/master/rechunker/types.py
