@@ -31,13 +31,22 @@ class Filepathcheck:
         self.outputzarrs = filepaths
         return
     
-    def intermediatezarr(self, filepaths):
+    def rechunkintermediatezarr(self, filepaths):
         if filepaths != '':
             if len(filepaths) != self.n_inputs:
                 raise ValueError(f"intermediatezarr : {filepaths} must have same number of files as input zarr list  ({self.n_inputs}).")
         else:
-            filepaths = [f + '_intermediate' for f in self.outputzarrs]
+            filepaths = [f + '_rechunk_intermediate' for f in self.outputzarrs]
         return filepaths
+    
+    def regridintermediatezarr(self, filepaths):
+        if filepaths != '':
+            if len(filepaths) != self.n_inputs:
+                raise ValueError(f"regridintermediatezarr : {filepaths} must have same number of files as input zarr list  ({self.n_inputs}).")
+        else:
+            filepaths = [f + '_regrid_intermediate' for f in self.outputzarrs]
+        return filepaths
+
     
 parser = argparse.ArgumentParser()
 parser.add_argument('--inputzarr', 
@@ -50,22 +59,28 @@ parser.add_argument('--outputzarr',
                     nargs='+', 
                     help='Output filename(s) - either 1 or 2 zarr files, must be same number as input'
 )
-parser.add_argument('--intermediatezarr', 
+parser.add_argument('--rechunkintermediatezarr', 
                     type=str, 
-                    help=('Intermediate store filename(s) - either 1 or 2 zarr files, must be same number as input.'
-                        + 'Defaults to [inputzarr]_intermediate'), 
+                    help=('Rechunking intermediate store filename(s) - either 1 or 2 zarr files, must be same number as input.'
+                        + 'Defaults to [inputzarr]_rechunk_intermediate'), 
                     default=''
 )
-
+parser.add_argument('--regridintermediatezarr', 
+                    type=str, 
+                    help=('Regridding intermediate store filename(s) - either 1 or 2 zarr files, must be same number as input.'
+                        + 'Defaults to [inputzarr]_regrid_intermediate'), 
+                    default=''
+)
 parser.add_argument('--latlonchunks', type=int, help='New chunk size for both lat and lon', default=4)
-parser.add_argument('--max_mem', type=lambda x: f"{x}GB", help='Max RAM usgae in GB', default=40)
+parser.add_argument('--max_mem', type=lambda x: f"{x}GB", help='Max RAM usgae in GB', default='40')
 parser.add_argument('--n_workers', type=int, help='Number of workers', default=1)
 args = parser.parse_args()
 
 filepathcheck = Filepathcheck()
 filepathcheck.inputzarr(args.inputzarr)
 filepathcheck.outputzarr(args.outputzarr)
-args.intermediatezarr = filepathcheck.intermediatezarr(args.intermediatezarr)
+args.rechunkintermediatezarr = filepathcheck.rechunkintermediatezarr(args.rechunkintermediatezarr)
+args.regridintermediatezarr = filepathcheck.regridintermediatezarr(args.regridintermediatezarr)
 
 ###############################################
 
@@ -73,11 +88,13 @@ args.intermediatezarr = filepathcheck.intermediatezarr(args.intermediatezarr)
 class ob: pass
 args = ob()
 args.latlonchunks = 4
-args.inputzarr = ['/datadrive/hadgem3/nat_hist_zarr']
-args.intermediatezarr = ['/datadrive/hadgem3/nat_hist_zarr_time_stream_intermediate']
-args.outputzarr = ['/datadrive/hadgem3/nat_hist_zarr_time_stream']
-args.max_mem = 40
-args.n_workers = 2
+args.n_times = 8
+args.inputzarr = ['/datadrive/hadgem3/nat_hist_zarr', '/datadrive/cam5/nat_hist_zarr']
+args.rechunkintermediatezarr = ['/datadrive/hadgem3/trans5_rechunk_intermediate', '/datadrive/cam5/trans5_rechunk_intermediate']
+args.regridintermediatezarr = ['/datadrive/hadgem3/trans5_regrid_intermediate', '/datadrive/cam5/trans5_regrid_intermediate']
+args.outputzarr = ['/datadrive/hadgem3/trans5', '/datadrive/cam5/trans5']
+args.max_mem = '20GB'
+args.n_workers = 1
 '''
 
 # Set up cluster
@@ -88,21 +105,29 @@ datasets = [xr.open_zarr(f, consolidated=True) for f in args.inputzarr]
 # regrid to common grid if nore than 1 dataset
 if len(datasets)>1:
     regridders = [*construct_regridders(*datasets)]
-    datasets = [ds if rg in None else rg(ds) for ds, rg in zip(datasets, regridders)]
+    datasets = [ds if rg is None else rg(ds) for ds, rg in zip(datasets, regridders)]
 
-# 
-for ds, outputzarr, temp_store in zip(datasets, args.outputzarr, args.intermediatezarr):
+    
+for ds, outputzarr, regrid_temp_store, rechunk_temp_store in zip(datasets, args.outputzarr, args.regridintermediatezarr, args.rechunkintermediatezarr):
+    break
+    # save out the regridded data if regridding is peformed
+    if len(datasets)>1:
+        with ProgressBar():
+            ds.to_zarr(regrid_temp_store, consolidated=True)
+        ds = xr.open_zarr(regrid_temp_store, consolidated=True)
 
-    target_chunks = dict(run=1, time=len(ds.time), lat=args.latlonchunks, lon=args.latlonchunks, height=1)
+    target_chunks = dict(run=1, time=1, lat=args.latlonchunks, lon=args.latlonchunks, height=1)
     target_chunks_dict = {k:tuple([target_chunks[d] for d in ds[k].dims]) for k in ds.keys()}
 
     # Compute rechunking method
-    array_plan = rechunk(ds, target_chunks_dict, max_mem, outputzarr, temp_store=temp_store)
+    array_plan = rechunk(ds, target_chunks_dict, args.max_mem, outputzarr, temp_store=rechunk_temp_store)
 
     with ProgressBar():
         array_plan.execute()
 
-    os.system(f"rm -rf {temp_store}")
+    os.system(f"rm -rf {rechunk_temp_store}")
+    if len(datasets)>1:
+        os.system(f"rm -rf {regrid_temp_store}")
 
     # This next section manually consolidates the zarr store
     zarr.convenience.consolidate_metadata(outputzarr)
