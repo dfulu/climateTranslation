@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 
 import argparse
-import progressbar
+from dask.diagnostics import ProgressBar
 import time
 
 from climatetranslation.unit.utils import get_config
@@ -29,7 +29,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, help='Path to the config file.')
 parser.add_argument('--output_zarr', type=str, help="Output zarr store path")
 parser.add_argument('--x2x', type=check_x2x, help="Any of [a2b, b2a]")
-parser.add_argument('--n_times', type=int, help="Number of time snaps to load at once. This dictates memory usage.", default=100)
 args = parser.parse_args()
 
 config = get_config(args.config)
@@ -43,7 +42,6 @@ CDFfilepath = config['output_root']
 
 ds_a = get_dataset(config['data_zarr_a'], config['level_vars'])
 ds_b = get_dataset(config['data_zarr_b'], config['level_vars'])
-
 rg_a, rg_b = construct_regridders(ds_a, ds_b)
 
 # attributes are stripped by regridding module. Save them
@@ -73,35 +71,21 @@ cdf_b = CDF.load(f'{CDFfilepath}/quantiles_b.nc')
 
 QM = QauntileMapping(cdf_a, cdf_b)
 
+transform_func = QM.transform_a2b if args.x2x=='a2b' else QM.transform_b2a
 
 ###############################################
 # apply quantile mapping translation
-
-mode = 'w-'
-append_dim = None
-
-N_times = len(ds.time)
-
-with progressbar.ProgressBar(max_value=N_times) as bar:
         
-    for i in range(0, N_times, args.n_times):
+result = ds.map_blocks(
+    transform_func,
+    template=ds,
+)
 
-        # transform through network 
-        ds_mapped = QM.transform_a2b(ds.isel(time=slice(i, min(i+args.n_times, N_times))).compute())
+print('setup complete - starting computation')
 
-        # fix chunking
-        ds_mapped = ds_mapped.chunk(dict(run=1, time=1, lat=-1, lon=-1))
-
+with ProgressBar():
         # append to zarr
-        ds_mapped.to_zarr(
+        result.to_zarr(
             output_zarr, 
-            mode=mode, 
-            append_dim=append_dim,
             consolidated=True
         )
-
-        # update progress bar and change modes so dat can be appended
-        bar.update(i)
-        mode, append_dim='a', 'time'
-            
-    bar.update(N_times)

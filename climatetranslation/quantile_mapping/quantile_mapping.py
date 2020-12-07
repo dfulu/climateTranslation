@@ -7,24 +7,23 @@ from scipy.interpolate import interp1d
 def translate_quantile_value_single_month(ds, quantile_values, value2quantile=True):
 
     def interpolate(x, xs, ys):
-        if x > xs[-1]:
-            return 1 if value2quantile else ys[-1]
-        elif x < xs[0]:
-            return 0 if value2quantile else ys[0]
-        return interp1d(xs, ys, kind="linear")(x)
+        if value2quantile:
+            fill_value=(0,1)
+        else:
+            fill_value=(ys[0], ys[-1])
+        return interp1d(xs, ys, kind="linear", fill_value=fill_value, bounds_error=False, assume_sorted=True)(x)
     
-    return xr.merge([
-        xr.apply_ufunc(
+    return xr.apply_ufunc(
             interpolate,
-            ds[k],
-            quantile_values[k] if value2quantile else quantile_values.quantiles,
-            quantile_values.quantiles if value2quantile else quantile_values[k],
-            input_core_dims=[[], ['quantiles'], ['quantiles']],
+            ds,
+            quantile_values if value2quantile else quantile_values.quantiles,
+            quantile_values.quantiles if value2quantile else quantile_values,
+            input_core_dims=[['time'], ['quantiles'], ['quantiles']],
+            output_core_dims = [['time']],
             exclude_dims = {'quantiles',},
+            dask= "allowed",
             vectorize=True
-        ).rename(k) for k in ds.keys()
-    ])
-
+        )
 
 
 class CDF:
@@ -45,24 +44,26 @@ class CDF:
         plt.tight_layout()
 
     def transform(self, ds):
+        qs = self.quantile_values.sel(lat=ds.lat, lon=ds.lon)
         results = []
         for month, group in ds.groupby('time.month'):
             results.append(
                 translate_quantile_value_single_month(
                     group, 
-                    self.quantile_values.sel(month=month),
+                    qs.sel(month=month),
                     value2quantile=True
                 )
             )
         return xr.concat(results, dim='time').drop('month').sortby('time')
     
     def inverse_transform(self, ds):
+        qs = self.quantile_values.sel(lat=ds.lat, lon=ds.lon)
         results = []
         for month, group in ds.groupby('time.month'):
             results.append(
                 translate_quantile_value_single_month(
                     group, 
-                    self.quantile_values.sel(month=month),
+                    qs.sel(month=month),
                     value2quantile=False
                 )
             )
