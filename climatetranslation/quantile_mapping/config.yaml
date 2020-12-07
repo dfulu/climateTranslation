@@ -1,8 +1,8 @@
 # data options
-number_splits_lat: 50 # split each dataset into this many lat chunks
-number_splits_lon: 100 # split each dataset into this many lat chunks
-data_zarr_a: /datadrive/hadgem3/nat_hist_zarr  # dataset folder location
-data_zarr_b: /datadrive/cam5/nat_hist_zarr     # dataset folder location
+number_splits_lat: 20 # split each dataset into this many lat chunks
+number_splits_lon: 20 # split each dataset into this many lat chunks
+data_zarr_a: /datadrive/hadgem3/nat_hist_transposed_zarr  # dataset folder location
+data_zarr_b: /datadrive/cam5/nat_hist_transposed_zarr     # dataset folder location
 level_vars:                   # which levels to take each variable at 
   0:
   - pr

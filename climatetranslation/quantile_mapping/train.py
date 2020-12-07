@@ -64,7 +64,7 @@ quantiles = np.linspace(eps, 1-eps, n_quantiles)
 N_lat = len(ds_a.lat)
 N_lon = len(ds_a.lon)
 lat_chunks = np.linspace(0, N_lat, n_lat+1).astype(int)
-lon_chunks = np.linspace(0, N_lat, n_lat+1).astype(int)
+lon_chunks = np.linspace(0, N_lon, n_lon+1).astype(int)
 
 T0 = 0
 def print_status(m):

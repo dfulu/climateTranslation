@@ -95,7 +95,7 @@ args.inputzarr = ['/datadrive/hadgem3/nat_hist_zarr', '/datadrive/cam5/nat_hist_
 args.intermediatezarr = ['/datadrive/hadgem3/trans5_intermediate', '/datadrive/cam5/trans5_intermediate']
 args.outputzarr = ['/datadrive/hadgem3/trans5', '/datadrive/cam5/trans5']
 args.max_mem = '20GB'
-args.n_workers = 1
+args.n_workers = 4
 '''
 
 # Set up cluster
@@ -118,6 +118,7 @@ def parse_size(size):
 max_bytes = parse_size(args.max_mem)   
 
 for ds, outputzarr, temp_store in zip(datasets, args.outputzarr, args.intermediatezarr):
+    break
     n_times = 2*ds.nbytes//max_bytes
     dn = len(ds.time)//(n_times-1)
     
@@ -125,18 +126,19 @@ for ds, outputzarr, temp_store in zip(datasets, args.outputzarr, args.intermedia
     append_dim=None
     for i in progressbar.progressbar(range(n_times)):
         ds.isel(time=slice(i*dn, (i+1)*dn)) \
-            .chunk(dict(lat=args.latlonchunks, lon=args.latlonchunks, time=dn)) \
+            .chunk(dict(lat=args.latlonchunks, lon=args.latlonchunks, time=dn, run=len(ds.run))) \
             .to_zarr(temp_store, mode=mode, append_dim=append_dim, consolidated=True)
         mode="a"
         append_dim = "time"
     
     load_chunks = {k:v[0] for k,v in ds.chunks.items()}
-    load_chunks.update(dict(lat=args.latlonchunks, lon=args.latlonchunks,time=-1))
+    load_chunks.update(dict(lat=args.latlonchunks, lon=args.latlonchunks, time=len(ds.time), run=len(ds.run)))
     ds = xr.open_zarr(temp_store, consolidated=True, chunks=load_chunks)
-
+    #ds = xr.open_zarr(temp_store, consolidated=True).chunk(load_chunks)
+    for k in ds.keys(): del ds[k].encoding['chunks']
     with ProgressBar():
         ds.to_zarr(outputzarr, consolidated=True)
-
+    
     os.system(f"rm -rf {temp_store}")
 
 if args.n_workers>1:
