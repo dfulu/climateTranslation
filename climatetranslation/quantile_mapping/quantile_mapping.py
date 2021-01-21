@@ -54,9 +54,11 @@ class CDF:
                     value2quantile=True
                 )
             )
-        return xr.concat(results, dim='time').drop('month').sortby('time')
+        ds_new = xr.concat(results, dim='time').drop('month').sortby('time')
+        return ds_new.transpose(*tuple(ds[list(ds.keys())[0]].dims))
     
     def inverse_transform(self, ds):
+        #print(ds.lat.values, ds.lon.values)
         qs = self.quantile_values.sel(lat=ds.lat, lon=ds.lon)
         results = []
         for month, group in ds.groupby('time.month'):
@@ -67,7 +69,8 @@ class CDF:
                     value2quantile=False
                 )
             )
-        return xr.concat(results, dim='time').drop('month').sortby('time')
+        ds_new = xr.concat(results, dim='time').drop('month').sortby('time')
+        return ds_new.transpose(*tuple(ds[list(ds.keys())[0]].dims))
     
     def save(self, filepath):
         self.quantile_values.to_netcdf(filepath)

@@ -86,6 +86,6 @@ print('setup complete - starting computation')
 with ProgressBar():
         # append to zarr
         result.to_zarr(
-            output_zarr, 
+            args.output_zarr, 
             consolidated=True
         )

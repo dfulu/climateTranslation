@@ -16,4 +16,4 @@ number_of_quantiles: 100 # number of quantiles to calculate
 fraction_gap: 0.001 # quantiles chosen will range between this value and 1-this value
 
 # output options
-output_root: /home/dfulu/model_outputs/quantile_mapping_models/v1
+output_root: /home/dfulu/model_outputs/quantile_mapping_models/v2
