@@ -44,6 +44,10 @@ def preprocess(ds):
 
 ds = xr.open_mfdataset("{}/era5_*_daily_eu.nc".format(args.temp_store_dir), preprocess=preprocess)
 
+# Convert from geopotential to geopotential height 
+# https://confluence.ecmwf.int/pages/viewpage.action?pageId=111155328
+ds['z500'] = ds['z500'] / 9.80665
+
 # rename to match with other datasets
 ds = ds.rename({'t2m':'tas', 'tmax':'tasmax', 'tmin':'tasmin', 'tp':'pr'})
 
