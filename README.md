@@ -12,6 +12,8 @@ CC-BY-SA-4.0 License
 File Layout 
 -----------
 
+## TODO
+- update below for new structure
 
 `Notebooks/` - Jupyter notebook files.
 - `data_analysis/` - Notebooks used to explore model results.

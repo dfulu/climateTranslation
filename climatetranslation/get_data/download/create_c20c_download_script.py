@@ -96,7 +96,7 @@ def dedup_print(L):
     return nL
 
 
-filename = os.path.join(dirname, "wget_scripts", "{}_{}.sh".format(args.model.lower(), args.experiment))
+filename = os.path.join(dirname, "wget_c20c", "{}_{}.sh".format(args.model.lower(), args.experiment))
 with open (filename, "r") as myfile:
     data = myfile.readlines()
 data = [d[:-1] for d in data if filter(d)]
