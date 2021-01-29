@@ -1,4 +1,4 @@
-name: py37_fresh
+name: py37_pytorch2
 channels:
   - pytorch
   - pyviz
@@ -11,14 +11,15 @@ dependencies:
   - asciitree=0.3.3=py_2
   - async_generator=1.10=py37h28b3542_0
   - attrs=20.3.0=pyhd3eb1b0_0
+  - basemap=1.2.2=py37h2621adb_2
   - blas=1.0=mkl
   - bleach=3.2.1=py_0
   - bokeh=2.2.3=py37_0
   - brotlipy=0.7.0=py37h27cfd23_1003
   - bzip2=1.0.8=h7b6447c_0
-  - ca-certificates=2020.10.14=0
+  - ca-certificates=2021.1.19=h06a4308_0
   - cartopy=0.18.0=py37hfca54e7_5
-  - certifi=2020.11.8=py37h06a4308_0
+  - certifi=2020.12.5=py37h06a4308_0
   - cffi=1.14.3=py37h261ae71_2
   - cftime=1.3.0=py37ha21ca33_0
   - chardet=3.0.4=py37h06a4308_1003
@@ -53,6 +54,7 @@ dependencies:
   - holoviews=1.13.5=py_0
   - icu=58.2=he6710b0_3
   - idna=2.10=py_0
+  - imageio=2.9.0=py_0
   - importlib-metadata=2.0.0=py_1
   - importlib_metadata=2.0.0=1
   - iniconfig=1.1.1=py_0
@@ -107,16 +109,19 @@ dependencies:
   - nbclient=0.5.1=py_0
   - nbconvert=6.0.7=py37_0
   - nbformat=5.0.8=py_0
+  - nc-time-axis=1.2.0=py_1
   - ncurses=6.2=he6710b0_1
   - nest-asyncio=1.4.3=pyhd3eb1b0_0
   - netcdf-fortran=4.5.3=mpi_mpich_h3923e1a_0
+  - netcdf4=1.5.4=nompi_py37hcbfd489_103
+  - networkx=2.5=py_0
   - ninja=1.10.1=py37hfd86e86_0
   - notebook=6.1.4=py37_0
   - numcodecs=0.7.2=py37he6710b0_0
   - numpy=1.19.2=py37h54aff64_0
   - numpy-base=1.19.2=py37hfa32c7d_0
   - olefile=0.46=py37_0
-  - openssl=1.1.1h=h7b6447c_0
+  - openssl=1.1.1i=h27cfd23_0
   - packaging=20.4=py_0
   - pandas=1.1.3=py37he6710b0_0
   - pandoc=2.11=hb0f4dca_0
@@ -144,6 +149,7 @@ dependencies:
   - pygments=2.7.2=pyhd3eb1b0_0
   - pyopenssl=19.1.0=pyhd3eb1b0_1
   - pyparsing=2.4.7=py_0
+  - pyproj=2.6.1.post1=py37h6415a23_3
   - pyqt=5.9.2=py37h05f1152_2
   - pyrsistent=0.17.3=py37h7b6447c_0
   - pyshp=2.1.2=pyh9f0ad1d_0
@@ -157,12 +163,13 @@ dependencies:
   - pytorch=1.7.0=py3.7_cuda10.1.243_cudnn7.6.3_0
   - pytz=2020.1=py_0
   - pyviz_comms=0.7.6=py_0
+  - pywavelets=1.1.1=py37h7b6447c_2
   - pyyaml=5.3.1=py37h7b6447c_1
   - pyzmq=19.0.2=py37he6710b0_1
   - qt=5.9.7=h5867ecd_1
   - readline=8.0=h7b6447c_0
-  - rechunker=0.3.1=pyhd8ed1ab_1
   - requests=2.24.0=py_0
+  - scikit-image=0.17.2=py37hdf5156a_0
   - scikit-learn=0.23.2=py37h0573a6f_0
   - scipy=1.5.2=py37h0b6359f_0
   - send2trash=1.5.0=py37_0
@@ -178,6 +185,7 @@ dependencies:
   - terminado=0.9.1=py37_0
   - testpath=0.4.4=py_0
   - threadpoolctl=2.1.0=pyh5ca1d4c_0
+  - tifffile=2020.10.1=py37hdd07704_2
   - tk=8.6.10=hbc83047_0
   - toml=0.10.1=py_0
   - toolz=0.11.1=py_0
@@ -201,4 +209,13 @@ dependencies:
   - zipp=3.4.0=pyhd3eb1b0_0
   - zlib=1.2.11=h7b6447c_3
   - zstd=1.4.5=h9ceee32_0
-prefix: /anaconda/envs/py37_fresh
+  - pip:
+    - affine==2.3.0
+    - cdsapi==0.4.0
+    - click-plugins==1.1.1
+    - cligj==0.7.1
+    - global-land-mask==1.0.0
+    - rasterio==1.1.8
+    - rechunker==0.3.1+5.g17053cc
+    - snuggs==1.4.7
+prefix: /anaconda/envs/py37_pytorch2
