@@ -14,6 +14,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Download daily data from ERA5 and convert to zarr.')
 parser.add_argument('--temp_store_dir', type=str, help='Directory used to temporarily store downloaded files.')
 parser.add_argument('--zarr_store', type=str, help='Filepath of zarr store to create')
+parser.add_argument('--entire_globe', help="download the full globe, else just Europe.", action="store_true")                   
 args = parser.parse_args()
 
 os.makedirs(args.temp_store_dir, exist_ok=True)
@@ -26,6 +27,8 @@ for url in [
     "https://climexp.knmi.nl/ERA5/era5_tmin_daily_eu.nc",
     "https://climexp.knmi.nl/ERA5/era5_z500_daily_eu.nc"
 ]:
+    if args.entire_globe:
+        url = url.replace("_eu", "")
     os.system("wget -P {} {}".format(args.temp_store_dir, url))
 
 # Some of these variables have 11:30 am timestamps and some have 12 noon timestamps
@@ -42,7 +45,11 @@ def preprocess(ds):
         ds = ds.isel(lev=0).drop('lev')
     return ds
 
-ds = xr.open_mfdataset("{}/era5_*_daily_eu.nc".format(args.temp_store_dir), preprocess=preprocess)
+if args.entire_globe:
+    filepattern = "{}/era5_*_daily.nc".format(args.temp_store_dir)
+else:
+    filepattern = "{}/era5_*_daily_eu.nc".format(args.temp_store_dir)
+ds = xr.open_mfdataset(filepattern, preprocess=preprocess)
 
 # Convert from geopotential to geopotential height 
 # https://confluence.ecmwf.int/pages/viewpage.action?pageId=111155328
@@ -65,4 +72,4 @@ ds = ds.transpose('run', 'time', 'lat', 'lon')
 # chunk and save
 save_to_zarr(ds, args.zarr_store)
 
-os.system("rm {}/era5_*_daily_eu.nc".format(args.temp_store_dir))
+os.system("rm {}".format(filepattern))
