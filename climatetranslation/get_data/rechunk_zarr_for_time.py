@@ -1,6 +1,6 @@
 import xarray as xr
 import zarr
-from rechunker import rechunk
+import numpy as np
 
 import argparse
 import time
@@ -12,7 +12,8 @@ from dask.diagnostics import ProgressBar
 
 import progressbar
 
-from climatetranslation.unit.data import construct_regridders
+from climatetranslation.unit.data import construct_regridders, split_lon_at
+from climatetranslation.unit.utils import get_config
 
 print(f"staring - {time.asctime()}", flush=True)
 
@@ -34,21 +35,24 @@ class Filepathcheck:
         self.outputzarrs = filepaths
         return
     
-    def rechunkintermediatezarr(self, filepaths):
+    def intermediatezarr(self, filepaths):
         if filepaths != '':
             if len(filepaths) != self.n_inputs:
                 raise ValueError(f"intermediatezarr : {filepaths} must have same number of files as input zarr list  ({self.n_inputs}).")
         else:
-            filepaths = [f + '_rechunk_intermediate' for f in self.outputzarrs]
+            filepaths = [f + '_intermediate' for f in self.outputzarrs]
         return filepaths
     
-    def regridintermediatezarr(self, filepaths):
-        if filepaths != '':
-            if len(filepaths) != self.n_inputs:
-                raise ValueError(f"regridintermediatezarr : {filepaths} must have same number of files as input zarr list  ({self.n_inputs}).")
+    def config(self, configpath):
+        if self.n_inputs==1 and configpath!='':
+            raise ValueError(
+                "Cannot apply regridding with only one dataset. Do not supply regridding config if only 1 dataset"
+            ) 
+        if configpath!='':
+            conf = get_config(configpath)
         else:
-            filepaths = [f + '_regrid_intermediate' for f in self.outputzarrs]
-        return filepaths
+            conf = None
+        return conf
 
     
 parser = argparse.ArgumentParser()
@@ -62,28 +66,25 @@ parser.add_argument('--outputzarr',
                     nargs='+', 
                     help='Output filename(s) - either 1 or 2 zarr files, must be same number as input'
 )
-parser.add_argument('--rechunkintermediatezarr', 
+parser.add_argument('--intermediatezarr', 
                     type=str, 
                     help=('Rechunking intermediate store filename(s) - either 1 or 2 zarr files, must be same number as input.'
-                        + 'Defaults to [inputzarr]_rechunk_intermediate'), 
+                        + 'Defaults to [inputzarr]_intermediate'), 
                     default=''
 )
-parser.add_argument('--regridintermediatezarr', 
-                    type=str, 
-                    help=('Regridding intermediate store filename(s) - either 1 or 2 zarr files, must be same number as input.'
-                        + 'Defaults to [inputzarr]_regrid_intermediate'), 
-                    default=''
-)
+
 parser.add_argument('--latlonchunks', type=int, help='New chunk size for both lat and lon', default=4)
 parser.add_argument('--max_mem', type=lambda x: f"{x}GB", help='Max RAM usgae in GB', default='40')
 parser.add_argument('--n_workers', type=int, help='Number of workers', default=1)
+parser.add_argument('--config', type=str, help='Path to the config file for regridding.', default='')
 args = parser.parse_args()
 
 filepathcheck = Filepathcheck()
 filepathcheck.inputzarr(args.inputzarr)
 filepathcheck.outputzarr(args.outputzarr)
-args.rechunkintermediatezarr = filepathcheck.rechunkintermediatezarr(args.rechunkintermediatezarr)
-args.regridintermediatezarr = filepathcheck.regridintermediatezarr(args.regridintermediatezarr)
+args.intermediatezarr = filepathcheck.intermediatezarr(args.intermediatezarr)
+args.config = filepathcheck.config(args.config)
+
 
 ###############################################
 
@@ -104,29 +105,64 @@ if args.n_workers>1:
     
 datasets = [xr.open_zarr(f, consolidated=True) for f in args.inputzarr]
 
-# regrid to common grid if nore than 1 dataset
-if len(datasets)>1:
-    regridders = [*construct_regridders(*datasets)]
-    datasets = [ds if rg is None else rg(ds) for ds, rg in zip(datasets, regridders)]
+# Regrid if required
+if args.config is not None:
+    regridders = construct_regridders(*datasets, 
+                                      args.config['resolution_match'], 
+                                      args.config['scale_method'], 
+                                      periodic=args.config['bbox'] is not None)
+
+    # attributes are stripped by regridding module. Save them
+    attrs = [{v:ds[v].attrs for v in ds.keys()} for ds in datasets]
+
+    # regridders allow lazy evaluation
+    datasets = [ds if rg is None else rg(ds).astype(np.float32) for ds, rg in zip(datasets, regridders)]
+    del regridders
     
+    # split at longitude
+    datasets = [split_lon_at(ds, args.config['split_at']) for ds in datasets]
+    
+    # slice out area if required
+    bbox = args.config['bbox']
+    if bbox is not None:
+        datasets = [ds.sel(lat=slice(bbox['S'], bbox['N']), lon=slice(bbox['W'], bbox['E'])) for ds in datasets]
+    
+    # reapply attributes
+    for ds, atts in zip(datasets, attrs):
+        for v, attr in atts.items():
+            ds[v].attrs = attr
+
 
 def parse_size(size):
     units = {"B": 1, "KB": 1e3, "MB": 1e6, "GB": 1e9}
     number, unit = re.findall(r'[A-Za-z]+|\d+', size)
     return int(float(number)*units[unit])
 
-max_bytes = parse_size(args.max_mem)   
+max_bytes = parse_size(args.max_mem)
 
 for ds, outputzarr, temp_store in zip(datasets, args.outputzarr, args.intermediatezarr):
-    break
-    n_times = 2*ds.nbytes//max_bytes
-    dn = len(ds.time)//(n_times-1)
+    for v in ds.variables:
+        ds[v].encoding={}
+    n_times = max(2*ds.nbytes//max_bytes, 1)
+    dn = int(len(ds.time)/n_times + 1)
     
     mode="w-"
     append_dim=None
     for i in progressbar.progressbar(range(n_times)):
+        tchunk = min(dn, len(ds.time) - i*dn)
+        assert tchunk >=0, '`tchunk` < 0. somehting has gone wrong.'
+        if tchunk==0:
+            continue
+        
+        intermed_chunkdict = dict(lat=args.latlonchunks, 
+                                  lon=args.latlonchunks, 
+                                  time=tchunk, 
+                                  run=len(ds.run))
+        if 'height' in ds.keys():
+            intermed_chunkdict['height']=1
+        
         ds.isel(time=slice(i*dn, (i+1)*dn)) \
-            .chunk(dict(lat=args.latlonchunks, lon=args.latlonchunks, time=dn, run=len(ds.run))) \
+            .chunk(intermed_chunkdict) \
             .to_zarr(temp_store, mode=mode, append_dim=append_dim, consolidated=True)
         mode="a"
         append_dim = "time"
@@ -134,7 +170,6 @@ for ds, outputzarr, temp_store in zip(datasets, args.outputzarr, args.intermedia
     load_chunks = {k:v[0] for k,v in ds.chunks.items()}
     load_chunks.update(dict(lat=args.latlonchunks, lon=args.latlonchunks, time=len(ds.time), run=len(ds.run)))
     ds = xr.open_zarr(temp_store, consolidated=True, chunks=load_chunks)
-    #ds = xr.open_zarr(temp_store, consolidated=True).chunk(load_chunks)
     for k in ds.keys(): del ds[k].encoding['chunks']
     with ProgressBar():
         ds.to_zarr(outputzarr, consolidated=True)

@@ -9,8 +9,10 @@ from climatetranslation.unit.utils import get_config
 from climatetranslation.unit.data import (
     construct_regridders, 
     reduce_height, 
-    get_dataset
+    get_dataset,
+    split_lon_at
 )
+
 from quantile_mapping import CDF, QauntileMapping
 
 print(f"staring - {time.asctime()}", flush=True)
@@ -61,6 +63,14 @@ for v, attr in b_attrs.items():
     ds_b[v].attrs = attr
     
 ds = ds_a if args.x2x=='a2b' else ds_b
+
+# split at longitude
+ds = split_lon_at(ds, config['split_at'])
+    
+# slice out area if required
+if config['bbox'] is not None:
+    bbox = config['bbox']
+    ds = ds.sel(lat=slice(bbox['S'], bbox['N']), lon=slice(bbox['W'], bbox['E']))
 
 
 ################################################

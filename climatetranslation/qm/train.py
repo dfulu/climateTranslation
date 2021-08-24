@@ -11,9 +11,9 @@ import time
 from quantile_mapping import CDF
 from climatetranslation.unit.utils import get_config
 from climatetranslation.unit.data import (
-    construct_regridders, 
     reduce_height, 
-    get_dataset
+    get_dataset,
+    dataset_time_overlap
 )
 
 print(f"staring - {time.asctime()}", flush=True)
@@ -22,39 +22,42 @@ print(f"staring - {time.asctime()}", flush=True)
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, help='Path to the config file.')
 args = parser.parse_args()
-config = get_config(args.config)
+conf = get_config(args.config)
 
 # unpack a few things for convenience
-filepath = config['output_root']
-eps = config['fraction_gap']
-n_lat = config['number_splits_lat']
-n_lon = config['number_splits_lon']
-n_quantiles = config['number_of_quantiles']
+filepath = conf['output_root']
+eps = conf['fraction_gap']
+n_lat = conf['number_splits_lat']
+n_lon = conf['number_splits_lon']
+n_quantiles = conf['number_of_quantiles']
 
 # set up directory
 os.makedirs(filepath, exist_ok=True)
 
 # load the datasets
-ds_a = get_dataset(config['data_zarr_a'], config['level_vars'])
-ds_b = get_dataset(config['data_zarr_b'], config['level_vars'])
 
-rg_a, rg_b = construct_regridders(ds_a, ds_b)
+ds_a = get_dataset(conf['data_zarr_a'], 
+                   conf['level_vars'], 
+                   filter_bounds=False, 
+                   split_at=conf['split_at'], 
+                   bbox=conf['bbox'])
 
-# attributes are stripped by regridding module. Save them
-a_attrs = {v:ds_a[v].attrs for v in ds_a.keys()}
-b_attrs = {v:ds_b[v].attrs for v in ds_b.keys()}
+ds_b = get_dataset(conf['data_zarr_b'], 
+                   conf['level_vars'], 
+                   filter_bounds=False, 
+                   split_at=conf['split_at'], 
+                   bbox=conf['bbox'])
 
-# regridders allow lazy evaluation
-ds_a = ds_a if rg_a is None else rg_a(ds_a).astype(np.float32)
-ds_b = ds_b if rg_b is None else rg_b(ds_b).astype(np.float32)
-
-del rg_a, rg_b
-
-# reapply attributes
-for v, attr in a_attrs.items():
-    ds_a[v].attrs = attr
-for v, attr in b_attrs.items():
-    ds_b[v].attrs = attr
+if conf['time_range'] is not None:
+    if conf['time_range'] == 'overlap':
+        ds_a, ds_b = dataset_time_overlap([ds_a, ds_b])
+    elif isinstance(conf['time_range'], dict):
+        time_slice = slice(conf['time_range']['start_date'], 
+                           conf['time_range']['end_date'])
+        ds_a = ds_a.sel(time=time_slice)
+        ds_b = ds_b.sel(time=time_slice)
+    else:
+        raise ValueError("time_range not valid : {}".format(conf['time_range']))
 
 
 # calculate the quantiles
