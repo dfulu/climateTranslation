@@ -74,7 +74,9 @@ def growing_season_length(ds):
     else:
         dt_end_north = tn
         
-    gsl_north = ds_north.sel(time=slice(dt_start_north, dt_end_north)).resample(time='1Y').map(_one_year_gsl, apex_month=7).mean(dim=('time', 'run'))
+    gsl_north = ds_north.sel(time=slice(dt_start_north, dt_end_north)) \
+                        .resample(time='1Y').map(_one_year_gsl, apex_month=7) \
+                        .mean(dim=('time', 'run'))
     
     # calculate start and ends of years we have full coverage for
     if t0.month > 7 or (t0.month==7 and t0.day > 1):
@@ -89,7 +91,10 @@ def growing_season_length(ds):
     
     # offset southern hemisphere by 6 months
     offset = ds.time[0].item().replace(month=7, day=1) - ds.time[0].item().replace(month=1, day=1)
-    gsl_south = ds_south.sel(time=slice(dt_start_south, dt_end_south)).resample(time='1Y', loffset=offset).map(_one_year_gsl, apex_month=1).mean(dim=('time', 'run'))
+    gsl_south = ds_south.sel(time=slice(dt_start_south, dt_end_south)) \
+                        .resample(time='1Y', loffset=offset) \
+                        .map(_one_year_gsl, apex_month=1) \
+                        .mean(dim=('time', 'run'))
     
     gsl = xr.concat([gsl_south, gsl_north], dim='lat').rename("GSL")
     

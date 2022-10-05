@@ -1,0 +1,32 @@
+# data options
+number_splits_lat: 5 # split each dataset into this many lat chunks
+number_splits_lon: 5 # split each dataset into this many lat chunks
+data_zarr_a: /home/s1205782/geos-fulton/datadrive/hadgem3/v8.2_monsoon_to_era5_40k  # dataset folder location
+data_zarr_b: /home/s1205782/geos-fulton/datadrive/era5/all_hist_global_zarr     # dataset folder location
+out_zarr_a: /home/s1205782/geos-fulton/datadrive/hadgem3/v8.2_monsoon_unit40k_and_qm_to_era5  # dataset folder location
+out_zarr_b: /home/s1205782/geos-fulton/datadrive/era5/delete_me     # dataset folder location
+level_vars:                   # which levels to take each variable at 
+  0:
+  - pr
+  2:
+  - tas
+  - tasmin
+  - tasmax
+  5500:
+  - z500
+resolution_match: downscale   # upscale to finer resolution or downscale to coarser resolution when matching
+scale_method: conservative    # Method from [conservative, bilinear] https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
+split_at: 360                 # what degree does the map split at? Left and right of map are at this longitude
+bbox:                         # either dict of N, S, E, W or none. Must match with above
+  N: 30
+  S: -8
+  E: 121
+  W: 44
+time_range: overlap           # What time range of data is used. Must be [none / overlap / dict as below]
+#  start_date: 1970-01-01T12:00:00
+#  end_date: 2000-01-01T12:00:00
+# quantile options
+number_of_quantiles: 100 # number of quantiles to calculate
+fraction_gap: 0.001 # quantiles chosen will range between this value and 1-this value
+
+output_root: /home/s1205782/netcdf_store/qm_models/unithad2era

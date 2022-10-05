@@ -1,0 +1,21 @@
+# data options
+data_zarr_a: /datadrive/hadgem3/all_hist_zarr  # dataset folder location
+data_zarr_b: /datadrive/era5/all_hist_global_zarr     # dataset folder location
+level_vars:                   # which levels to take each variable at 
+  0:
+  - pr
+  2:
+  - tas
+  - tasmin
+  - tasmax
+  5500:
+  - z500
+resolution_match: downscale   # upscale to finer resolution or downscale to coarser resolution when matching
+scale_method: conservative    # Method from [conservative, bilinear] https://xesmf.readthedocs.io/en/latest/notebooks/Compare_algorithms.html
+split_at: 360                 # what degree does the map split at? Left and right of map are at this longitude
+bbox:                         # either dict of N, S, E, W or none. Must match with above
+  N: 30
+  S: -8
+  E: 121
+  W: 44
+output_root: /datadrive/qm_models/had2era

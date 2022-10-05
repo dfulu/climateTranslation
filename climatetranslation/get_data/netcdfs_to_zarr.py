@@ -63,6 +63,7 @@ def open_datasets(run_numbers, grouped_files):
             da_list.append(xr.open_mfdataset([f for f in sorted(files) if f"/{v}_" in f], 
                                              coords='minimal', 
                                              compat='override',
+                                             combine='nested',
                                              concat_dim="time",))
             
         print(12*" "+f"merging in", flush=True)
