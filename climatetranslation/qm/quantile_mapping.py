@@ -1,8 +1,15 @@
 import numpy as np
 import xarray as xr
+import matplotlib.pyplot as plt
 
 from scipy.interpolate import interp1d
 
+def make_noise(scale, dt):
+    return xr.DataArray(
+        np.random.random(size=dt.shape[0])*scale, 
+        coords=dict(time=dt), 
+        dims=['time']
+)
 
 def translate_quantile_value_single_month(ds, quantile_values, value2quantile=True):
 
@@ -27,11 +34,12 @@ def translate_quantile_value_single_month(ds, quantile_values, value2quantile=Tr
 
 
 class CDF:
-    def __init__(self, quantiles):
+    def __init__(self, quantiles, noise_scale=1e-12):
         self.quantiles = quantiles
+        self.noise_scale = noise_scale
         
     def fit(self, ds):
-        self.quantile_values = ds.groupby('time.month').quantile(
+        self.quantile_values = (ds+make_noise(self.noise_scale, ds.time)).groupby('time.month').quantile(
             self.quantiles, dim=('time', 'run'), interpolation='linear'
         ).rename(name_dict={'quantile':'quantiles'})
         
@@ -49,7 +57,7 @@ class CDF:
         for month, group in ds.groupby('time.month'):
             results.append(
                 translate_quantile_value_single_month(
-                    group, 
+                    group+make_noise(self.noise_scale, group.time),
                     qs.sel(month=month),
                     value2quantile=True
                 )

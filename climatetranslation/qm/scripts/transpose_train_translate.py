@@ -16,8 +16,8 @@ print(f"{'-'*8}TRANSPOSING ZARR FILE{'-'*8}")
 script = "/home/dfulu/repos/climateTranslation/climatetranslation/get_data/rechunk_zarr_for_time.py"
 inzarr1 = config["data_zarr_a"]
 inzarr2 = config["data_zarr_b"]
-outzarr1 = inzarr1.replace("_zarr", "_transposed_zarr") 
-outzarr2 = inzarr2.replace("_zarr", "_transposed_zarr")
+outzarr1 = inzarr1 + "_transposed"
+outzarr2 = inzarr2 + "_transposed"
 
 os.system(
 f"""

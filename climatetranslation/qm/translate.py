@@ -44,7 +44,11 @@ CDFfilepath = config['output_root']
 
 ds_a = get_dataset(config['data_zarr_a'], config['level_vars'])
 ds_b = get_dataset(config['data_zarr_b'], config['level_vars'])
-rg_a, rg_b = construct_regridders(ds_a, ds_b)
+rg_a, rg_b = construct_regridders(ds_a, ds_b, 
+    resolution_match=config['resolution_match'],
+    scale_method=config['scale_method'], 
+    periodic=(config['bbox'] is None)
+)
 
 # attributes are stripped by regridding module. Save them
 a_attrs = {v:ds_a[v].attrs for v in ds_a.keys()}

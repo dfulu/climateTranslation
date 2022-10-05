@@ -102,8 +102,9 @@ args.n_workers = 4
 # Set up cluster
 if args.n_workers>1:
     client = Client(n_workers=args.n_workers, threads_per_worker=1,)# memory_limit=f'{args.max_mem//args.n_workers}GB')
-    
-datasets = [xr.open_zarr(f, consolidated=True) for f in args.inputzarr]
+
+print('inputs: ', args.inputzarr)
+datasets = [xr.open_zarr(f) for f in args.inputzarr]
 
 # Regrid if required
 if args.config is not None:
@@ -148,6 +149,7 @@ for ds, outputzarr, temp_store in zip(datasets, args.outputzarr, args.intermedia
     
     mode="w-"
     append_dim=None
+    print(temp_store)
     for i in progressbar.progressbar(range(n_times)):
         tchunk = min(dn, len(ds.time) - i*dn)
         assert tchunk >=0, '`tchunk` < 0. somehting has gone wrong.'
@@ -171,10 +173,11 @@ for ds, outputzarr, temp_store in zip(datasets, args.outputzarr, args.intermedia
     load_chunks.update(dict(lat=args.latlonchunks, lon=args.latlonchunks, time=len(ds.time), run=len(ds.run)))
     ds = xr.open_zarr(temp_store, consolidated=True, chunks=load_chunks)
     for k in ds.keys(): del ds[k].encoding['chunks']
+    print(outputzarr)
     with ProgressBar():
         ds.to_zarr(outputzarr, consolidated=True)
     
-    os.system(f"rm -rf {temp_store}")
+    #os.system(f"rm -rf {temp_store}")
 
 if args.n_workers>1:
     client.close()

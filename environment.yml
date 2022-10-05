@@ -1,4 +1,4 @@
-name: py37_pytorch2
+name: clim2clim
 channels:
   - pytorch
   - pyviz

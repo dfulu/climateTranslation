@@ -1,10 +1,10 @@
 # data options
 number_splits_lat: 5 # split each dataset into this many lat chunks
 number_splits_lon: 5 # split each dataset into this many lat chunks
-data_zarr_a: /datadrive/hadgem3/all_hist_zarr  # dataset folder location
-data_zarr_b: /datadrive/era5/all_hist_global_zarr     # dataset folder location
-out_zarr_a: /datadrive/hadgem3/all_hist_qm_to_era_zarr  # dataset folder location
-out_zarr_b: /datadrive/era5/all_hist_global_qm_to_had_zarr     # dataset folder location
+data_zarr_a: /home/s1205782/geos-fulton/datadrive/hadgem3/test_set/all_hist_zarr  # dataset folder location
+data_zarr_b: /home/s1205782/geos-fulton/datadrive/era5/all_hist_global_zarr     # dataset folder location
+out_zarr_a: /home/s1205782/geos-fulton/datadrive/hadgem3/test_set/all_hist_qm_to_era_monsoon_zarr  # dataset folder location
+out_zarr_b: /home/s1205782/geos-fulton/datadrive/era5/all_histqm_to_had_monsoon_zarr     # dataset folder location
 level_vars:                   # which levels to take each variable at 
   0:
   - pr
@@ -29,4 +29,4 @@ time_range: overlap           # What time range of data is used. Must be [none /
 number_of_quantiles: 100 # number of quantiles to calculate
 fraction_gap: 0.001 # quantiles chosen will range between this value and 1-this value
 
-output_root: /datadrive/qm_models/had2era
+output_root: /home/s1205782/geos-fulton/datadrive/qm_models/had2era
